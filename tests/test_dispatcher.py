@@ -21,6 +21,17 @@ servers:
       type: cloud_assistant
       fallback: winrm
     environment: test
+  - id: mock-linux-001
+    name: Mock Linux Server
+    provider: aliyun
+    region: cn-hangzhou
+    instance_id: i-mock456
+    os_type: linux
+    os_version: ubuntu-22.04
+    connection:
+      type: cloud_assistant
+      fallback: ssh
+    environment: test
 """
 
 MOCK_POLICIES_YAML = """
@@ -313,3 +324,67 @@ def test_install_windows_exporter_alias_routes_to_monitoring_agent(dispatcher):
         result = dispatcher.dispatch("mock-win-001", "install_windows_exporter", confirmed=True)
     assert result.success is True
     assert result.action == "install_monitoring_agent"
+
+
+# ── 脚本必须先上传到目标机再执行，不能把本机路径拼进远端命令 ──────────────────
+
+def test_check_server_uploads_script_to_windows_temp_before_execute(dispatcher):
+    mock_executor = MagicMock()
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        result = dispatcher.dispatch("mock-win-001", "check_server_status", confirmed=True)
+
+    assert result.success is True
+    mock_executor.upload_file.assert_called_once()
+    local_path, remote_path = mock_executor.upload_file.call_args.args
+    assert local_path.endswith("check_server.ps1")
+    assert remote_path == "C:\\Windows\\Temp\\check_server.ps1"
+
+    cmd = mock_executor.execute.call_args.args[0]
+    assert remote_path in cmd
+    assert local_path not in cmd
+
+
+def test_check_server_uploads_script_to_linux_tmp_before_execute(dispatcher):
+    mock_executor = MagicMock()
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        result = dispatcher.dispatch("mock-linux-001", "check_server_status", confirmed=True)
+
+    assert result.success is True
+    local_path, remote_path = mock_executor.upload_file.call_args.args
+    assert local_path.endswith("check_server.sh")
+    assert remote_path == "/tmp/check_server.sh"
+
+    cmd = mock_executor.execute.call_args.args[0]
+    assert remote_path in cmd
+    assert local_path not in cmd
+
+
+def test_install_database_uploads_script_before_execute(dispatcher):
+    mock_executor = MagicMock()
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        result = dispatcher.dispatch(
+            "mock-win-001", "install_database", params={"database": "sqlserver"}, confirmed=True,
+        )
+    assert result.success is True
+    remote_path = mock_executor.upload_file.call_args.args[1]
+    assert remote_path == "C:\\Windows\\Temp\\install.ps1"
+    assert remote_path in mock_executor.execute.call_args.args[0]
+
+
+def test_backup_database_uploads_script_and_keeps_params_in_command(dispatcher):
+    mock_executor = MagicMock()
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        result = dispatcher.dispatch(
+            "mock-win-001", "backup_database",
+            params={"name": "gotoplan", "dest": "C:\\Backup"}, confirmed=True,
+        )
+    assert result.success is True
+    remote_path = mock_executor.upload_file.call_args.args[1]
+    assert remote_path == "C:\\Windows\\Temp\\backup.ps1"
+    cmd = mock_executor.execute.call_args.args[0]
+    assert remote_path in cmd
+    assert "gotoplan" in cmd

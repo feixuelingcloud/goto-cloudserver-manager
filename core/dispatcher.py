@@ -234,14 +234,31 @@ class CloudServerManagerDispatcher:
 
     # ── 动作实现 ──────────────────────────────────────────────────────────────
 
+    def _upload_script(self, executor: Any, server: ServerConfig, local_script: Any) -> str:
+        """把本地脚本文件上传到目标服务器的临时目录，返回远端路径。
+
+        os_adapters/databases 下的脚本只存在于运行 Skill 的本机，必须先通过执行器
+        （SSH/WinRM/云助手）传到目标服务器，才能在远端引用其路径执行——不能把本机路径
+        直接拼进远端命令。
+        """
+        remote_path = (
+            f"C:\\Windows\\Temp\\{local_script.name}"
+            if server.os_type == "windows"
+            else f"/tmp/{local_script.name}"
+        )
+        executor.upload_file(str(local_script), remote_path)
+        return remote_path
+
     def _check_server(self, server: ServerConfig, executor: Any, action: str, params: dict) -> ActionResult:
         from pathlib import Path
         if server.os_type == "windows":
-            script = Path(__file__).parent.parent / "os_adapters" / "windows" / "check_server.ps1"
-            cmd = f"powershell -ExecutionPolicy Bypass -File '{script}'"
+            local_script = Path(__file__).parent.parent / "os_adapters" / "windows" / "check_server.ps1"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}'"
         else:
-            script = Path(__file__).parent.parent / "os_adapters" / "linux" / "check_server.sh"
-            cmd = f"bash '{script}'"
+            local_script = Path(__file__).parent.parent / "os_adapters" / "linux" / "check_server.sh"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"bash '{remote_script}'"
         result = executor.execute(cmd)
         return ActionResult(
             success=result.exit_code == 0,
@@ -256,11 +273,11 @@ class CloudServerManagerDispatcher:
         from pathlib import Path
         base = Path(__file__).parent.parent / "databases" / db_type
         if server.os_type == "windows":
-            script = base / "install.ps1"
-            cmd = f"powershell -ExecutionPolicy Bypass -File '{script}'"
+            remote_script = self._upload_script(executor, server, base / "install.ps1")
+            cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}'"
         else:
-            script = base / "install.sh"
-            cmd = f"bash '{script}'"
+            remote_script = self._upload_script(executor, server, base / "install.sh")
+            cmd = f"bash '{remote_script}'"
         result = executor.execute(cmd, timeout=1800)
         return ActionResult(
             success=result.exit_code == 0,
@@ -362,13 +379,15 @@ class CloudServerManagerDispatcher:
         from pathlib import Path
         db_name = params.get("name", "")
         if server.os_type == "windows":
-            script = Path(__file__).parent.parent / "databases" / db_type / "backup.ps1"
+            local_script = Path(__file__).parent.parent / "databases" / db_type / "backup.ps1"
+            remote_script = self._upload_script(executor, server, local_script)
             dest = params.get("dest", "C:\\Backup")
-            cmd = f"powershell -ExecutionPolicy Bypass -File '{script}' -DatabaseName '{db_name}' -Dest '{dest}'"
+            cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}' -DatabaseName '{db_name}' -Dest '{dest}'"
         else:
             dest = params.get("dest", "/backup")
-            script = Path(__file__).parent.parent / "databases" / db_type / "backup.sh"
-            cmd = f"bash '{script}' {db_name} {dest}"
+            local_script = Path(__file__).parent.parent / "databases" / db_type / "backup.sh"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"bash '{remote_script}' {db_name} {dest}"
         result = executor.execute(cmd, timeout=3600)
         return ActionResult(success=result.exit_code == 0, action="backup_database", server_id=server.id, output=result.stdout)
 
@@ -380,11 +399,13 @@ class CloudServerManagerDispatcher:
         if not source:
             return ActionResult(success=False, action="restore_database", server_id=server.id, error="缺少 source 参数（备份文件路径）")
         if server.os_type == "windows":
-            script = Path(__file__).parent.parent / "databases" / db_type / "restore.ps1"
-            cmd = f"powershell -ExecutionPolicy Bypass -File '{script}' -DatabaseName '{db_name}' -Source '{source}'"
+            local_script = Path(__file__).parent.parent / "databases" / db_type / "restore.ps1"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}' -DatabaseName '{db_name}' -Source '{source}'"
         else:
-            script = Path(__file__).parent.parent / "databases" / db_type / "restore.sh"
-            cmd = f"bash '{script}' {db_name} {source}"
+            local_script = Path(__file__).parent.parent / "databases" / db_type / "restore.sh"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"bash '{remote_script}' {db_name} {source}"
         result = executor.execute(cmd, timeout=3600)
         return ActionResult(success=result.exit_code == 0, action="restore_database", server_id=server.id, output=result.stdout, error=result.stderr)
 
@@ -426,13 +447,15 @@ class CloudServerManagerDispatcher:
         if not ports:
             return ActionResult(success=False, action="configure_firewall", server_id=server.id, error="缺少 open_ports 参数")
         if server.os_type == "windows":
-            script = Path(__file__).parent.parent / "os_adapters" / "windows" / "configure_firewall.ps1"
+            local_script = Path(__file__).parent.parent / "os_adapters" / "windows" / "configure_firewall.ps1"
+            remote_script = self._upload_script(executor, server, local_script)
             port_args = " ".join(str(p) for p in ports)
-            cmd = f"powershell -ExecutionPolicy Bypass -File '{script}' -Ports {port_args} -SourceCIDR '{source_cidr}'"
+            cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}' -Ports {port_args} -SourceCIDR '{source_cidr}'"
         else:
-            script = Path(__file__).parent.parent / "os_adapters" / "linux" / "configure_firewall.sh"
+            local_script = Path(__file__).parent.parent / "os_adapters" / "linux" / "configure_firewall.sh"
+            remote_script = self._upload_script(executor, server, local_script)
             ports_csv = ",".join(str(p) for p in ports)
-            cmd = f"bash '{script}' '{ports_csv}' '{source_cidr}'"
+            cmd = f"bash '{remote_script}' '{ports_csv}' '{source_cidr}'"
         result = executor.execute(cmd)
         return ActionResult(success=result.exit_code == 0, action="configure_firewall", server_id=server.id, output=result.stdout, error=result.stderr)
 
@@ -440,20 +463,23 @@ class CloudServerManagerDispatcher:
         if server.os_type != "windows":
             return ActionResult(success=False, action="configure_winrm", server_id=server.id, error="WinRM 仅适用于 Windows 服务器")
         from pathlib import Path
-        script = Path(__file__).parent.parent / "os_adapters" / "windows" / "configure_winrm.ps1"
+        local_script = Path(__file__).parent.parent / "os_adapters" / "windows" / "configure_winrm.ps1"
+        remote_script = self._upload_script(executor, server, local_script)
         port = params.get("port", 5986)
-        cmd = f"powershell -ExecutionPolicy Bypass -File '{script}' -Port {port}"
+        cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}' -Port {port}"
         result = executor.execute(cmd)
         return ActionResult(success=result.exit_code == 0, action="configure_winrm", server_id=server.id, output=result.stdout, error=result.stderr)
 
     def _install_monitoring_agent(self, server: ServerConfig, executor: Any, params: dict) -> ActionResult:
         from pathlib import Path
         if server.os_type == "windows":
-            script = Path(__file__).parent.parent / "os_adapters" / "windows" / "install_windows_exporter.ps1"
-            cmd = f"powershell -ExecutionPolicy Bypass -File '{script}'"
+            local_script = Path(__file__).parent.parent / "os_adapters" / "windows" / "install_windows_exporter.ps1"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"powershell -ExecutionPolicy Bypass -File '{remote_script}'"
         else:
-            script = Path(__file__).parent.parent / "os_adapters" / "linux" / "install_node_exporter.sh"
-            cmd = f"bash '{script}'"
+            local_script = Path(__file__).parent.parent / "os_adapters" / "linux" / "install_node_exporter.sh"
+            remote_script = self._upload_script(executor, server, local_script)
+            cmd = f"bash '{remote_script}'"
         result = executor.execute(cmd, timeout=600)
         return ActionResult(success=result.exit_code == 0, action="install_monitoring_agent", server_id=server.id, output=result.stdout, error=result.stderr)
 
