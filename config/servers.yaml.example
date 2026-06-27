@@ -1,5 +1,9 @@
 # 服务器清单示例文件 - 复制为 servers.yaml 并填入真实实例信息
 # servers.yaml 已在 .gitignore 中，绝不提交到版本控制（避免泄露真实实例 ID 等基础设施信息）
+#
+# public_ip / private_ip 为可选字段：留空时，连接走 SSH/WinRM 兜底前会自动查云厂商 API 补全；
+# 如果云厂商 API 查不到可用 IP（如自定义网络环境），可在对应服务器条目下手动指定，例如：
+#   public_ip: "1.2.3.4"
 
 servers:
   # ========== 阿里云示例 ==========

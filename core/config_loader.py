@@ -80,6 +80,8 @@ class ServerConfig(BaseModel):
     databases: list[DatabaseConfig] = []
     environment: str = "test"
     tags: dict[str, str] = {}
+    public_ip: str = ""                  # SSH/WinRM 兜底连接用；留空时由 dispatcher 实时查云厂商 API 补全
+    private_ip: str = ""
 
     @field_validator("provider")
     @classmethod

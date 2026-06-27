@@ -34,7 +34,8 @@ class WinRMExecutor(ExecutorBase):
         self._host: str = ""
 
     def connect(self, server: "ServerConfig") -> None:
-        host = getattr(server, "private_ip", "") or getattr(server, "public_ip", "")
+        # 同 SSHExecutor：优先使用 public_ip，OpenClaw 通常运行在云外部，无法依赖内网 IP 连通
+        host = getattr(server, "public_ip", "") or getattr(server, "private_ip", "")
         self._host = host
         transport = "ssl" if self._use_ssl else "ntlm"
         self._session = winrm.Session(

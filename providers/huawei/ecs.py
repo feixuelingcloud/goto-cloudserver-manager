@@ -34,12 +34,15 @@ class HuaweiECS(CloudProviderBase):
         instances = []
         for s in (response.servers or []):
             addresses = s.addresses or {}
-            private_ips = [a.addr for nets in addresses.values() for a in nets if a.os_ext_ips_type == "fixed"]
+            all_ips = [a for nets in addresses.values() for a in nets]
+            private_ips = [a.addr for a in all_ips if a.os_ext_ips_type == "fixed"]
+            public_ips = [a.addr for a in all_ips if a.os_ext_ips_type == "floating"]
             instances.append(ServerInstance(
                 instance_id=s.id,
                 name=s.name or "",
                 status=s.status or "",
                 os_type="windows" if "windows" in (s.os_ext_srv_attr_host or "").lower() else "linux",
+                public_ip=public_ips[0] if public_ips else "",
                 private_ip=private_ips[0] if private_ips else "",
                 region=region,
             ))
@@ -53,12 +56,15 @@ class HuaweiECS(CloudProviderBase):
         response = client.show_server(request)
         s = response.server
         addresses = s.addresses or {}
-        private_ips = [a.addr for nets in addresses.values() for a in nets if a.os_ext_ips_type == "fixed"]
+        all_ips = [a for nets in addresses.values() for a in nets]
+        private_ips = [a.addr for a in all_ips if a.os_ext_ips_type == "fixed"]
+        public_ips = [a.addr for a in all_ips if a.os_ext_ips_type == "floating"]
         return ServerInstance(
             instance_id=s.id,
             name=s.name or "",
             status=s.status or "",
             os_type="windows" if "windows" in (s.os_ext_srv_attr_os_type or "").lower() else "linux",
+            public_ip=public_ips[0] if public_ips else "",
             private_ip=private_ips[0] if private_ips else "",
             region=region,
         )

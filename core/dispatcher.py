@@ -95,12 +95,28 @@ class CloudServerManagerDispatcher:
         if action in self._PROVIDER_ONLY_ACTIONS:
             return self._route_action(server, None, action, params)
         executor = self._get_executor(server)
+        server = self._ensure_host_ip(server, executor)
         try:
             executor.connect(server)
             result = self._route_action(server, executor, action, params)
         finally:
             executor.close()
         return result
+
+    def _ensure_host_ip(self, server: ServerConfig, executor: Any) -> ServerConfig:
+        """SSH/WinRM 直连需要真实 IP；servers.yaml 未配置时，实时查云厂商 API 补全。
+
+        cloud_assistant/TAT 通道按 instance_id 派发命令，不需要 IP，因此只在
+        真正落到 SSH/WinRM 执行器时才查询，避免给不需要的请求增加额外 API 调用。
+        """
+        from executor.ssh_executor import SSHExecutor
+        from executor.winrm_executor import WinRMExecutor
+        if not isinstance(executor, (SSHExecutor, WinRMExecutor)):
+            return server
+        if server.public_ip or server.private_ip:
+            return server
+        instance = self._get_provider(server).get_instance(server.instance_id, server.region)
+        return server.model_copy(update={"public_ip": instance.public_ip, "private_ip": instance.private_ip})
 
     def _route_action(self, server: ServerConfig, executor: Any, action: str, params: dict) -> ActionResult:
         """根据 action 名称路由到对应处理方法。"""

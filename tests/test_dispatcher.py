@@ -326,6 +326,65 @@ def test_install_windows_exporter_alias_routes_to_monitoring_agent(dispatcher):
     assert result.action == "install_monitoring_agent"
 
 
+# ── SSH/WinRM 直连缺失 IP 时应自动查云厂商 API 补全 ────────────────────────────
+
+def test_winrm_executor_auto_fetches_missing_ip(dispatcher):
+    from executor.winrm_executor import WinRMExecutor
+    from providers.base import ServerInstance
+
+    mock_executor = MagicMock(spec=WinRMExecutor)
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    mock_provider = MagicMock()
+    mock_provider.get_instance.return_value = ServerInstance(
+        instance_id="i-mock123", name="mock", status="running", os_type="windows",
+        public_ip="9.9.9.9", private_ip="10.0.0.9",
+    )
+
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        with patch.object(dispatcher, "_get_provider", return_value=mock_provider):
+            result = dispatcher.dispatch("mock-win-001", "check_server_status", confirmed=True)
+
+    assert result.success is True
+    mock_provider.get_instance.assert_called_once_with("i-mock123", "cn-hangzhou")
+    connected_server = mock_executor.connect.call_args.args[0]
+    assert connected_server.public_ip == "9.9.9.9"
+    assert connected_server.private_ip == "10.0.0.9"
+
+
+def test_winrm_executor_skips_lookup_when_ip_already_set(dispatcher):
+    from executor.winrm_executor import WinRMExecutor
+
+    server = dispatcher._config.get_server("mock-win-001")
+    dispatcher._config._servers["mock-win-001"] = server.model_copy(update={"public_ip": "1.1.1.1"})
+
+    mock_executor = MagicMock(spec=WinRMExecutor)
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    mock_provider = MagicMock()
+
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        with patch.object(dispatcher, "_get_provider", return_value=mock_provider):
+            result = dispatcher.dispatch("mock-win-001", "check_server_status", confirmed=True)
+
+    assert result.success is True
+    mock_provider.get_instance.assert_not_called()
+    connected_server = mock_executor.connect.call_args.args[0]
+    assert connected_server.public_ip == "1.1.1.1"
+
+
+def test_cloud_assistant_executor_never_triggers_ip_lookup(dispatcher):
+    # 普通 MagicMock() 不是 SSHExecutor/WinRMExecutor 实例，模拟 cloud_assistant/TAT 通道
+    mock_executor = MagicMock()
+    mock_executor.execute.return_value = MagicMock(exit_code=0, stdout="ok", stderr="")
+    mock_provider = MagicMock()
+
+    with patch.object(dispatcher, "_get_executor", return_value=mock_executor):
+        with patch.object(dispatcher, "_get_provider", return_value=mock_provider):
+            result = dispatcher.dispatch("mock-win-001", "check_server_status", confirmed=True)
+
+    assert result.success is True
+    mock_provider.get_instance.assert_not_called()
+
+
 # ── 脚本必须先上传到目标机再执行，不能把本机路径拼进远端命令 ──────────────────
 
 def test_check_server_uploads_script_to_windows_temp_before_execute(dispatcher):

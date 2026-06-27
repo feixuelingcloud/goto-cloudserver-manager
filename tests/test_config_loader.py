@@ -99,6 +99,28 @@ def test_get_provider_config(config_loader):
     assert cfg["name"] == "阿里云"
 
 
+def test_server_defaults_to_empty_ip_fields(config_loader):
+    server = config_loader.get_server("test-win-001")
+    assert server.public_ip == ""
+    assert server.private_ip == ""
+
+
+def test_server_loads_manual_ip_override(tmp_path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "servers.yaml").write_text(SAMPLE_SERVERS_YAML.replace(
+        "environment: test\n",
+        "environment: test\n    public_ip: \"1.2.3.4\"\n    private_ip: \"10.0.0.5\"\n",
+        1,
+    ), encoding="utf-8")
+    (config_dir / "providers.yaml").write_text(SAMPLE_PROVIDERS_YAML, encoding="utf-8")
+    loader = ConfigLoader(config_dir=config_dir)
+    loader.load()
+    server = loader.get_server("test-win-001")
+    assert server.public_ip == "1.2.3.4"
+    assert server.private_ip == "10.0.0.5"
+
+
 def test_env_var_expansion(tmp_path, monkeypatch):
     monkeypatch.setenv("TEST_AK_ID", "actual_key_id")
     config_dir = tmp_path / "config"

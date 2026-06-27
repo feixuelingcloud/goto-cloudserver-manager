@@ -34,10 +34,10 @@ class SSHExecutor(ExecutorBase):
 
     def connect(self, server: "ServerConfig") -> None:
         host = server.connection.ssh.host if hasattr(server.connection.ssh, "host") else ""
-        # 优先使用 private_ip（云助手 fallback 到 SSH 时用 ECS 私网 IP）
+        # OpenClaw 通常运行在外部主机上，管理多个云厂商的服务器时不可能同时身处每个 VPC 内部，
+        # 因此优先使用 public_ip，只有公网 IP 不存在时才退回内网 private_ip（适用于本身就在同一 VPC 内执行的场景）
         if not host:
-            # 尝试从服务器 id 推断主机（实际使用时 servers.yaml 应包含 ip 字段）
-            host = getattr(server, "private_ip", "") or getattr(server, "public_ip", "")
+            host = getattr(server, "public_ip", "") or getattr(server, "private_ip", "")
         self._host = host
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
