@@ -382,7 +382,7 @@ goto-cloudserver-manager（Skill 入口 · 策略检查 · 路由分发）
 
 ## 开发阶段
 
-**当前版本：v1.0.3**
+**当前版本：v1.0.4**
 
 - ✅ 阿里云 + Windows Server + SQL Server + Ubuntu MVP
 - ✅ 完整 Linux 支持（MySQL / PostgreSQL / Redis）
