@@ -1,0 +1,67 @@
+# 服务器健康报告
+
+**报告时间**：{{ now() }}
+**服务器**：{{ server.name }}（{{ server.id }}）
+**环境**：{{ server.environment }}
+**云厂商**：{{ server.provider }}
+**区域**：{{ server.region }}
+
+---
+
+## 基本信息
+
+| 项目 | 值 |
+|------|-----|
+| 操作系统 | {{ server.os_type }} / {{ server.os_version }} |
+| 实例 ID | {{ server.instance_id }} |
+| 连接方式 | {{ server.connection.type }} |
+| 角色 | {{ server.role | join(', ') }} |
+
+---
+
+## 资源使用状况
+
+{% if health_data is defined %}
+| 指标 | 当前值 | 状态 |
+|------|--------|------|
+| CPU 使用率 | {{ health_data.cpu_percent }}% | {% if health_data.cpu_percent | float > 90 %}⚠️ 偏高{% elif health_data.cpu_percent | float > 70 %}🟡 注意{% else %}✅ 正常{% endif %} |
+| 内存使用率 | {{ health_data.memory_percent }}% | {% if health_data.memory_percent | float > 90 %}⚠️ 偏高{% elif health_data.memory_percent | float > 75 %}🟡 注意{% else %}✅ 正常{% endif %} |
+| 磁盘使用率 | {{ health_data.disk_root_percent | default('N/A') }}% | {% if health_data.disk_root_percent is defined and health_data.disk_root_percent | float > 85 %}⚠️ 偏高{% else %}✅ 正常{% endif %} |
+
+{% if health_data.warnings %}
+### ⚠️ 告警信息
+
+{{ health_data.warnings }}
+{% endif %}
+
+{% else %}
+> 未获取到资源使用数据，请检查健康检查脚本输出。
+{% endif %}
+
+---
+
+## 数据库状态
+
+{% if server.databases %}
+{% for db in server.databases %}
+- **{{ db.type | upper }}** v{{ db.version }}（端口：{{ db.port }}）：{% if db_status is defined %}{{ db_status.get(db.type, '未检查') }}{% else %}未检查{% endif %}
+{% endfor %}
+{% else %}
+- 无数据库配置
+{% endif %}
+
+---
+
+## 建议
+
+{% if health_data is defined and not health_data.healthy %}
+1. 请关注上述告警项，建议优先处理
+2. 若 CPU/内存持续偏高，考虑扩容或排查异常进程
+{% else %}
+1. 服务器运行正常，建议保持定期巡检
+2. 确认备份计划执行正常
+{% endif %}
+
+---
+
+*本报告由 goto-cloudserver-manager v0.1.0 自动生成*

@@ -1,0 +1,42 @@
+# 数据库备份报告
+
+**备份时间**：{{ now() }}
+**目标服务器**：{{ server.name }}（{{ server.id }}）
+**数据库**：{{ database_name | default('N/A') }}（{{ db_type | default('') | upper }}）
+
+---
+
+## 备份摘要
+
+| 项目 | 值 |
+|------|-----|
+| 状态 | {% if success %}✅ 成功{% else %}❌ 失败{% endif %} |
+| 备份文件 | {{ backup_file | default('N/A') }} |
+| 文件大小 | {{ backup_size | default('N/A') }} |
+
+---
+
+## 备份输出
+
+```
+{{ output | default('无输出') }}
+```
+
+{% if error %}
+## 错误信息
+
+```
+{{ error }}
+```
+{% endif %}
+
+---
+
+## 建议
+
+1. 建议将备份文件同步到异地存储，避免单点故障
+2. 定期验证备份文件可恢复性
+
+---
+
+*本报告由 goto-cloudserver-manager v0.1.0 自动生成*

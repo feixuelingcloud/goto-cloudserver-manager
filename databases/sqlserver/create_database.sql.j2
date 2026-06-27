@@ -1,0 +1,45 @@
+-- SQL Server 建库模板（Jinja2）
+-- 变量：database_name, data_path, log_path
+
+USE [master];
+GO
+
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'{{ database_name }}')
+BEGIN
+    CREATE DATABASE [{{ database_name }}]
+    ON PRIMARY (
+        NAME = N'{{ database_name }}',
+        FILENAME = N'{% if data_path %}{{ data_path }}\{{ database_name }}.mdf{% else %}C:\SQLData\{{ database_name }}.mdf{% endif %}',
+        SIZE = 100MB,
+        MAXSIZE = UNLIMITED,
+        FILEGROWTH = 256MB
+    )
+    LOG ON (
+        NAME = N'{{ database_name }}_log',
+        FILENAME = N'{% if log_path %}{{ log_path }}\{{ database_name }}_log.ldf{% else %}C:\SQLLogs\{{ database_name }}_log.ldf{% endif %}',
+        SIZE = 50MB,
+        MAXSIZE = 2GB,
+        FILEGROWTH = 64MB
+    );
+    PRINT N'数据库 [{{ database_name }}] 创建成功';
+END
+ELSE
+BEGIN
+    PRINT N'数据库 [{{ database_name }}] 已存在，跳过创建';
+END
+GO
+
+-- 设置数据库兼容性级别（SQL Server 2022 = 160）
+ALTER DATABASE [{{ database_name }}] SET COMPATIBILITY_LEVEL = 160;
+GO
+
+-- 设置恢复模式为完整模式（支持时间点恢复）
+ALTER DATABASE [{{ database_name }}] SET RECOVERY FULL;
+GO
+
+-- 设置自动收缩关闭（性能最佳实践）
+ALTER DATABASE [{{ database_name }}] SET AUTO_SHRINK OFF;
+GO
+
+USE [{{ database_name }}];
+GO

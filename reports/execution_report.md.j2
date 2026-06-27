@@ -1,0 +1,49 @@
+# 运维执行报告
+
+**执行时间**：{{ now() }}
+**操作人员**：OpenClaw AI 自动执行
+**目标服务器**：{{ server.name }}（{{ server.id }}）
+
+---
+
+## 执行摘要
+
+| 项目 | 值 |
+|------|-----|
+| 操作 | {{ action }} |
+| 状态 | {% if success %}✅ 成功{% else %}❌ 失败{% endif %} |
+| 耗时 | {{ duration | default('N/A') }} |
+
+---
+
+## 执行步骤
+
+{% if steps is defined %}
+{% for step in steps %}
+{{ loop.index }}. **{{ step.name }}**
+   - 状态：{% if step.success %}✅{% else %}❌{% endif %}
+   - 输出：{{ step.output | default('无') | truncate(200) }}
+{% endfor %}
+{% else %}
+操作已完成。
+{% endif %}
+
+---
+
+## 执行输出
+
+```
+{{ output | default('无输出') }}
+```
+
+{% if error %}
+## 错误信息
+
+```
+{{ error }}
+```
+{% endif %}
+
+---
+
+*本报告由 goto-cloudserver-manager v0.1.0 自动生成*

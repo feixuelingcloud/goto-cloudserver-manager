@@ -1,0 +1,16 @@
+-- PostgreSQL 创建应用账号模板（Jinja2）
+-- 以 postgres 超级用户执行
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ app_username }}') THEN
+        CREATE ROLE "{{ app_username }}" LOGIN PASSWORD '{{ app_password | default("ChangeMe123!") }}';
+    END IF;
+END
+$$;
+
+GRANT CONNECT ON DATABASE "{{ database_name }}" TO "{{ app_username }}";
+\c "{{ database_name }}"
+GRANT USAGE ON SCHEMA public TO "{{ app_username }}";
+GRANT SELECT, INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA public TO "{{ app_username }}";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{{ app_username }}";

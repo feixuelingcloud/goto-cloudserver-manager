@@ -1,0 +1,63 @@
+# 每日服务器巡检报告
+
+**报告时间**：{{ now() }}
+**巡检日期**：{{ today() }}
+
+---
+
+## 巡检概览
+
+| 项目 | 值 |
+|------|-----|
+| 服务器总数 | {{ servers | default([]) | length }} |
+| 状态正常 | {{ healthy_count | default('N/A') }} |
+| 需要关注 | {{ warning_count | default('N/A') }} |
+
+---
+
+## 服务器明细
+
+{% if servers is defined %}
+{% for s in servers %}
+### {{ s.name }}（{{ s.id }}）
+
+- 云厂商：{{ s.provider }} / 区域：{{ s.region }}
+- 状态：{% if s.healthy %}✅ 正常{% else %}⚠️ 需要关注{% endif %}
+{% if s.databases %}
+- 数据库：{% for db in s.databases %}{{ db.type | upper }}{% if not loop.last %}, {% endif %}{% endfor %}
+{% endif %}
+{% if s.warnings %}
+- 告警：{{ s.warnings | join('; ') }}
+{% endif %}
+
+{% endfor %}
+{% else %}
+> 未获取到服务器巡检数据。
+{% endif %}
+
+---
+
+## 异常日志摘要
+
+{% if recent_errors is defined and recent_errors %}
+{% for err in recent_errors %}
+- {{ err }}
+{% endfor %}
+{% else %}
+近期无异常日志。
+{% endif %}
+
+---
+
+## 建议
+
+{% if warning_count is defined and warning_count > 0 %}
+1. 请优先处理上述告警服务器
+2. 建议复核相关服务的资源配额和扩容计划
+{% else %}
+1. 所有服务器运行正常，建议保持当前巡检节奏
+{% endif %}
+
+---
+
+*本报告由 goto-cloudserver-manager v0.1.0 自动生成*

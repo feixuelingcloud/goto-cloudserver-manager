@@ -1,0 +1,32 @@
+# 数据库健康报告
+
+**报告时间**：{{ now() }}
+**服务器**：{{ server.name }}（{{ server.id }}）
+**数据库类型**：{{ db_type | upper }}
+
+---
+
+## 检查结果
+
+```
+{{ check_output | default('无输出') }}
+```
+
+---
+
+## 摘要
+
+{% if is_healthy is defined %}
+整体状态：{% if is_healthy %}✅ 健康{% else %}⚠️ 需要关注{% endif %}
+{% endif %}
+
+{% if warnings is defined and warnings %}
+### 告警项
+{% for warning in warnings %}
+- {{ warning }}
+{% endfor %}
+{% endif %}
+
+---
+
+*本报告由 goto-cloudserver-manager v0.1.0 自动生成*

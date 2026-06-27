@@ -1,0 +1,24 @@
+-- SQL Server 创建应用账号模板（Jinja2）
+-- 变量：database_name, app_username, app_password
+
+USE [master];
+GO
+
+IF NOT EXISTS (SELECT name FROM sys.server_principals WHERE name = N'{{ app_username }}')
+BEGIN
+    CREATE LOGIN [{{ app_username }}] WITH PASSWORD = N'{{ app_password | default("ChangeMe123!") }}', CHECK_POLICY = ON;
+END
+GO
+
+USE [{{ database_name }}];
+GO
+
+IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = N'{{ app_username }}')
+BEGIN
+    CREATE USER [{{ app_username }}] FOR LOGIN [{{ app_username }}];
+END
+GO
+
+ALTER ROLE db_datareader ADD MEMBER [{{ app_username }}];
+ALTER ROLE db_datawriter ADD MEMBER [{{ app_username }}];
+GO

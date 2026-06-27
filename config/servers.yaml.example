@@ -1,0 +1,161 @@
+# 服务器清单示例文件 - 复制为 servers.yaml 并填入真实实例信息
+# servers.yaml 已在 .gitignore 中，绝不提交到版本控制（避免泄露真实实例 ID 等基础设施信息）
+
+servers:
+  # ========== 阿里云示例 ==========
+  - id: aliyun-win-sql-001
+    name: 阿里云 Windows SQL Server 测试机
+    provider: aliyun
+    region: cn-hangzhou
+    instance_id: i-xxxxxxxxxxxxxxxx          # 替换为真实 ECS 实例 ID
+    os_type: windows
+    os_version: windows-server-2022
+    connection:
+      type: cloud_assistant                  # 主连接方式：云助手
+      fallback: winrm                        # 备用：WinRM
+      winrm:
+        port: 5986
+        use_ssl: true
+        username: ${WINRM_DEFAULT_USERNAME}
+        password: ${WINRM_DEFAULT_PASSWORD}
+    role:
+      - database
+      - monitoring
+    databases:
+      - type: sqlserver
+        version: "2022"
+        port: 1433
+    environment: test
+    tags:
+      project: gotoplan
+      team: ops
+
+  - id: aliyun-win-web-001
+    name: 阿里云 Windows Web 服务器
+    provider: aliyun
+    region: cn-hangzhou
+    instance_id: i-zzzzzzzzzzzzzzzz          # 替换为真实 ECS 实例 ID
+    os_type: windows
+    os_version: windows-server-2022
+    connection:
+      type: cloud_assistant
+      fallback: winrm
+      winrm:
+        port: 5986
+        use_ssl: true
+        username: ${WINRM_DEFAULT_USERNAME}
+        password: ${WINRM_DEFAULT_PASSWORD}
+    role:
+      - web
+      - monitoring
+    databases: []
+    environment: prod
+    tags:
+      project: gotoplan
+      team: ops
+
+  - id: aliyun-linux-app-001
+    name: 阿里云 Ubuntu 应用服务器
+    provider: aliyun
+    region: cn-hangzhou
+    instance_id: i-yyyyyyyyyyyyyyyy          # 替换为真实 ECS 实例 ID
+    os_type: linux
+    os_version: ubuntu-22.04
+    connection:
+      type: cloud_assistant
+      fallback: ssh
+      ssh:
+        port: 22
+        username: root
+        key_path: ${SSH_DEFAULT_KEY_PATH}
+    role:
+      - app
+      - monitoring
+    databases:
+      - type: postgresql
+        version: "15"
+        port: 5432
+      - type: redis
+        version: "7"
+        port: 6379
+    environment: test
+    tags:
+      project: gotoplan
+      team: ops
+
+  # ========== 腾讯云示例 ==========
+  - id: tencent-linux-app-001
+    name: 腾讯云 Ubuntu 应用服务器
+    provider: tencent
+    region: ap-guangzhou
+    instance_id: ins-xxxxxxxx               # 替换为真实 CVM 实例 ID
+    os_type: linux
+    os_version: ubuntu-22.04
+    connection:
+      type: tat                             # 腾讯云 TAT 自动化助手
+      fallback: ssh
+      ssh:
+        port: 22
+        username: ubuntu
+        key_path: ${SSH_DEFAULT_KEY_PATH}
+    role:
+      - app
+      - monitoring
+    databases:
+      - type: mysql
+        version: "8.0"
+        port: 3306
+    environment: prod
+    tags:
+      project: gotoplan
+      team: ops
+
+  # ========== 腾讯云轻量应用服务器示例 ==========
+  - id: tencent-lighthouse-win-001
+    name: 腾讯云轻量应用服务器
+    provider: tencent-lighthouse              # 轻量应用服务器走独立 API，与 CVM（provider: tencent）区分
+    region: ap-guangzhou
+    instance_id: lhins-xxxxxxxx               # 替换为真实 Lighthouse 实例 ID
+    os_type: windows
+    os_version: windows-server-2022
+    connection:
+      type: tat                               # 腾讯云 TAT 自动化助手（同时支持 CVM 与 Lighthouse）
+      fallback: winrm
+      winrm:
+        port: 5986
+        use_ssl: true
+        username: ${WINRM_DEFAULT_USERNAME}
+        password: ${WINRM_DEFAULT_PASSWORD}
+    role:
+      - app
+      - monitoring
+    databases: []
+    environment: prod
+    tags:
+      project: gotoplan
+      team: ops
+
+  # ========== 华为云示例 ==========
+  - id: huawei-linux-db-001
+    name: 华为云 PostgreSQL 数据库服务器
+    provider: huawei
+    region: cn-east-3
+    instance_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   # 替换为真实 ECS 实例 ID
+    os_type: linux
+    os_version: openeuler-22.03
+    connection:
+      type: ssh                             # 华为云走 SSH
+      ssh:
+        port: 22
+        username: root
+        key_path: ${SSH_DEFAULT_KEY_PATH}
+    role:
+      - database
+    databases:
+      - type: postgresql
+        version: "16"
+        port: 5432
+    environment: test
+    tags:
+      project: gotoplan
+      team: ops
