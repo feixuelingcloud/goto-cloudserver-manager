@@ -1,6 +1,6 @@
 ---
 name: goto-cloudserver-manager
-version: 1.0.2
+version: 1.0.3
 description: 多云服务器自动化运维 Skill，支持阿里云/腾讯云/华为云服务器的数据库安装、表结构创建、监控巡检和健康报告
 author: GotoPlan Team
 license: MIT
@@ -134,7 +134,7 @@ example_prompts:
 
 # goto-cloudserver-manager
 
-GotoPlan / OpenClaw 生态中的**多云服务器自动化运维能力层**。
+GotoPlan / OpenClaw 生态中的**多云服务器自动化运维能力层**——配置好云厂商凭证和服务器信息后，用自然语言对话就能让 OpenClaw 完成状态检查、装数据库、建表、备份恢复、防火墙/监控配置、生成巡检报告等运维动作，OPC 和小团队也能拥有一个 AI 云运维工程师。
 
 ## 功能概览
 
@@ -142,8 +142,46 @@ GotoPlan / OpenClaw 生态中的**多云服务器自动化运维能力层**。
 - 多系统：Windows Server 2019/2022 / Ubuntu / Debian / CentOS / Rocky Linux / openEuler
 - 多数据库：SQL Server / MySQL / PostgreSQL / Redis
 - 统一 Schema：用中文描述业务表结构，自动生成各数据库 SQL
-- 三级权限：只读操作自动执行 / 写操作需确认 / 危险操作禁止
+- 21 个运维动作：状态检查、装库建表、健康巡检、备份恢复、防火墙/WinRM 配置、监控部署、日志分析、生成中文报告……（完整列表见上方 `capabilities`）
+- 三级权限：只读操作自动执行 / 写操作需确认 / 危险操作（删库、清空表、格式化磁盘等）直接拒绝
 
 ## 快速使用
 
-配置 `config/servers.yaml` 中的服务器信息，设置 `.env` 中的云厂商凭证，即可通过 OpenClaw 发出自然语言指令。
+### 1. 安装
+
+```
+openclaw skills install @feixuelingcloud/goto-cloudserver-manager
+```
+
+### 2. 配置云厂商凭证（直接对话，不用手动改文件）
+
+```
+帮我配置阿里云凭证，AccessKey ID 是 LTAI5tXxxxxxxxx，AccessKey Secret 是 xxxxxxxxxxxxxx
+```
+
+OpenClaw 会把凭证写入本地 `.env`，不会上传或外传；腾讯云、华为云同理，直接把 SecretId/SecretKey 或 AK/SK 告诉它即可。
+
+### 3. 添加服务器（直接对话）
+
+```
+添加一台阿里云 Windows 服务器，实例 ID 是 i-bp1xxxxxxxx，
+在杭州区域，操作系统是 Windows Server 2022，
+这台服务器用来跑 SQL Server，叫它"生产数据库服务器"
+```
+
+OpenClaw 会生成对应的 `config/servers.yaml` 条目并等你确认后写入。
+
+### 4. 用自然语言下达运维指令
+
+```
+检查一下"生产数据库服务器"现在的运行状况
+在"生产数据库服务器"上安装 SQL Server 2022
+请为 GotoPlan 项目创建会员、订单、支付记录表
+生成所有服务器的今日巡检报告
+```
+
+- 只读操作（状态检查、健康巡检等）直接执行并返回结果
+- 写操作（装库、建表、重启、备份恢复等）先给出执行计划，等你回复确认后才执行
+- 禁止类操作（删库、清空表、格式化磁盘、关闭防火墙等）会被直接拒绝，不会进入执行流程
+
+完整的安装配置步骤、更多对话示例、权限策略和架构说明见仓库 [README.md](README.md)。
