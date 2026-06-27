@@ -1,6 +1,6 @@
 ---
 name: goto-cloudserver-manager
-version: 1.0.1
+version: 1.0.0
 description: 多云服务器自动化运维 Skill，支持阿里云/腾讯云/华为云服务器的数据库安装、表结构创建、监控巡检和健康报告
 author: GotoPlan Team
 license: MIT
